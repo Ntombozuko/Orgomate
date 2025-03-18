@@ -1,24 +1,51 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useRef } from "react";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import Home from "./pages/Home";
+import Contact from "./pages/Contact";
+import About from "./pages/About";
+import Login from "./pages/LogIn";
+import SignUp from "./pages/SignUp";
+import Features from "./components/Features";
+import Footer from "./components/Footer";
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <MainApp />
+    </Router>
+  );
+}
+
+function MainApp() {
+  const featuresRef = useRef(null);
+  const location = useLocation(); // Get the current route
+
+  const scrollToFeatures = () => {
+    featuresRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  return (
+    <>
+      <Navbar scrollToFeatures={scrollToFeatures} />
+      <div className="content">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/About" element={<About />} />
+          <Route path="/Contact" element={<Contact />} />
+          <Route path="/LogIn" element={<Login />} />
+          <Route path="/SignUp" element={<SignUp />} />
+        </Routes>
+
+        {/* Show Features ONLY on the Home page */}
+        {location.pathname === "/" && (
+          <div ref={featuresRef}>
+            <Features />
+          </div>
+        )}
+      </div>
+      <Footer />
+    </>
   );
 }
 
