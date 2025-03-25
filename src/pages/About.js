@@ -1,5 +1,6 @@
 import React from "react";
-import "../styles/About.css"; // Assuming you create an About.css file for styling
+import "../styles/About.css";
+import { Link } from "react-router-dom";
 
 function About() {
   return (
@@ -45,6 +46,13 @@ function About() {
         Join thousands of teams using Orgomate to streamline their workflow.
         <b>Let’s build success together!</b>
       </p>
+
+      <ul>
+        <li>
+          {" "}
+          <Link to="/Projects">Projects</Link>{" "}
+        </li>
+      </ul>
     </div>
   );
 }
