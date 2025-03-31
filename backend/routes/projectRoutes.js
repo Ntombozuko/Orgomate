@@ -4,16 +4,30 @@ const authenticateToken = require("../authMiddleware");
 
 const router = express.Router();
 
-// GET all projects for a user
+// GET all projects for a user with owner's full name and formatted date
 router.get("/", authenticateToken, async (req, res) => {
   try {
+    console.log("Authenticated User ID:", req.user.id);
+
     const result = await pool.query(
-      "SELECT * FROM projects WHERE owner_id = $1",
+      `SELECT 
+        p.id, 
+        p.name, 
+        p.project_key, 
+        p.created_at, 
+        u.first_name, 
+        u.last_name 
+      FROM projects p
+      JOIN users u ON p.owner_id = u.id
+      WHERE p.owner_id = $1`,
       [req.user.id]
     );
+
+    console.log("Query Result:", result.rows); // Verify the fetched data
+
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching projects:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -34,14 +48,14 @@ router.post("/", authenticateToken, async (req, res) => {
     }
 
     const newProject = await pool.query(
-      "INSERT INTO projects (name, project_key, owner_id) VALUES ($1, $2, $3) RETURNING *",
+      `INSERT INTO projects (name, project_key, owner_id) 
+       VALUES ($1, $2, $3) RETURNING *`,
       [name, project_key, req.user.id]
     );
 
     res.status(201).json(newProject.rows[0]);
   } catch (err) {
     if (err.code === "23505") {
-      // PostgreSQL unique constraint violation
       return res.status(400).json({ error: "Project key already exists" });
     }
 

@@ -10,7 +10,7 @@ import "../styles/LogIn.css";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
-function LogIn() {
+function LogIn({ setUser }) {
   // State for form data
   const [formData, setFormData] = useState({
     email: "",
@@ -31,6 +31,7 @@ function LogIn() {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage(""); // Reset previous messages
 
     try {
       // Send login request
@@ -39,9 +40,14 @@ function LogIn() {
         password: formData.password,
       });
 
-      // Store token in localStorage
-      localStorage.setItem("token", response.data.token);
+      const { token, user } = response.data;
 
+      // Store token securely (consider sessionStorage for better security)
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      // Update user state in App.js using setUser
+      setUser(user);
       setMessage("Login successful! Redirecting...");
 
       // Redirect to dashboard or home page
@@ -49,8 +55,10 @@ function LogIn() {
         navigate("/Projects");
       }, 1000);
     } catch (error) {
-      setMessage("Invalid email or password. Try again.");
-      console.error(error);
+      console.error("Login error:", error);
+      setMessage(
+        error.response?.data?.message || "Invalid email or password. Try again."
+      );
     }
   };
 

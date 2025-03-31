@@ -1,38 +1,33 @@
 .features-container {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
-    padding: 50px;
-    min-height: 100vh;
-    width: 100%;
-    text-align: center;
-    padding-bottom: 100px; /* Push content up so it doesn't touch the footer */
-    box-sizing: border-box; /* Ensure padding doesn't affect width */
-  }
-  
-  .feature-card {
-    background-color: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    width: 80%;
-    max-width: 800px;
-    text-align: center;
-    transition: transform 0.3s ease-in-out;
-  }
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 50px;
+  min-height: 100vh;
+  width: 100%;
+  text-align: center;
+  padding-bottom: 100px; /* Push content up so it doesn't touch the footer */
+  box-sizing: border-box; /* Ensure padding doesn't affect width */
+}
 
-  /* Make card titles bold */
+.feature-card {
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  width: 80%;
+  max-width: 800px;
+  text-align: center;
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Make card titles bold */
 .feature-card .card-title {
-    font-weight: bold;
-  }
-  .feature-icon {
-    font-size: 24px; /* Adjusts icon size */
-    color: #2eb8b8; /* Optional: Change icon color */
-  }  
-
-  
-  
- 
-  
+  font-weight: bold;
+}
+.feature-icon {
+  font-size: 24px; /* Adjusts icon size */
+  color: #2eb8b8; /* Optional: Change icon color */
+}
