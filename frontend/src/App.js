@@ -15,6 +15,7 @@ import SignUp from "./pages/SignUp";
 import Features from "./components/Features";
 import Footer from "./components/Footer";
 import Projects from "./pages/Projects";
+import Board from "./pages/Board";
 
 function ProtectedRoute({ element }) {
   return localStorage.getItem("token") ? element : <Navigate to="/LogIn" />;
@@ -77,6 +78,7 @@ function MainApp() {
             path="/Projects"
             element={<ProtectedRoute element={<Projects />} />}
           />
+          <Route path="/Board" element={<Board/>} />
         </Routes>
 
         {/* Features section only on Home page */}

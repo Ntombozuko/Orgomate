@@ -12,6 +12,7 @@
   justify-content: flex-start; /* Align content at the top */
   flex-grow: 1; /* Ensures content expands and pushes footer down */
   padding: 50px 10%;
+  
 }
 
 .home-container, .features-container {

@@ -52,6 +52,7 @@ function About() {
           {" "}
           <Link to="/Projects">Projects</Link>{" "}
         </li>
+        <li> <Link to="/Board">Board</Link></li>
       </ul>
     </div>
   );
