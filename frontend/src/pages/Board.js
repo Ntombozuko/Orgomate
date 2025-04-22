@@ -5,6 +5,8 @@ import Col from "react-bootstrap/Col";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Dropdown from "react-bootstrap/Dropdown";
+import Modal from "react-bootstrap/Modal";
+import Form from "react-bootstrap/Form";
 import "../styles/Board.css";
 
 function Board() {
@@ -32,10 +34,32 @@ function Board() {
         }
     };
 
+    const [showModal, setShowModal] = useState(false);
+    const [tasks, setTasks] = useState([]);
+
+    const [newTask, setNewTask] = useState ( {
+        title: "",
+        type: "Task",
+        AssignedTo: "",
+        DueDate: "",
+        Priority: "Medium",
+    });
+
     return (
         <div className="content"> 
           <Container fluid>
             <h2 className="board-title">Task Management</h2>
+            <div className="topbar-container">
+                <input
+                    type="text"
+                    className="search-input"
+                    placeholder="Search task..."
+                />
+                <button className="create-btn" onClick={() => setShowModal(true)}>Create Item</button>
+            </div>
+
+
+
             <Row className="board-container g-1">
                 {columns.map((col, index) => (
                     <Col key={index} className="column">
@@ -53,6 +77,17 @@ function Board() {
                                         </Dropdown.Menu>
                                     </Dropdown>
                                 </div>
+                                {tasks
+                                .filter((task) => task.status === col)
+                                .map((task, taskIndex) => (
+                                <Card key={taskIndex} className="task-card mt-2">
+                                    <Card.Body>
+                                    <strong>{task.title}</strong>
+                                    <div className="small text-muted">{task.priority} • {task.type}  {task.status}</div>
+                                    <div className="small text-muted">Due: {task.dueDate}     {task.AssignedTo}</div>
+                                    </Card.Body>
+                                </Card>
+                            ))}
                             </Card.Body>
                         </Card>
                     </Col>
@@ -62,6 +97,90 @@ function Board() {
                 </Col>
             </Row>
           </Container>
+            <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Create New Task</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Task Title</Form.Label>
+                            <Form.Control
+                            type="text"
+                            value={newTask.title}
+                            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                            />
+                        </Form.Group>
+
+                        <Form.Group className="mb-3">
+                            <Form.Label>Item Type</Form.Label>
+                            <Form.Select
+                            value={newTask.type}
+                            onChange={(e) => setNewTask({ ...newTask, type: e.target.value })}
+                            >
+                            <option>Task</option>
+                            <option>Bug</option>
+                            <option>Feature</option>
+                            <option>Story</option>
+                            <option>Issue</option>
+                            <option>Change Request</option>
+                            </Form.Select>
+                        </Form.Group>
+
+                        <Form.Group className="mb-3">
+                            <Form.Label>Assigned To</Form.Label>
+                            <Form.Control
+                            type="text"
+                            value={newTask.assignedTo}
+                            onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
+                            />
+                        </Form.Group>
+
+                        <Form.Group className="mb-3">
+                            <Form.Label>Due Date</Form.Label>
+                            <Form.Control
+                            type="date"
+                            value={newTask.dueDate}
+                            onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                            />
+                        </Form.Group>
+
+                        <Form.Group className="mb-3">
+                            <Form.Label>Priority</Form.Label>
+                            <Form.Select
+                            value={newTask.priority}
+                            onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
+                            >
+                            <option>Low</option>
+                            <option>Medium</option>
+                            <option>High</option>
+                            </Form.Select>
+                        </Form.Group>
+                    </Form>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowModal(false)}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={() => {
+                            setTasks([...tasks, { ...newTask, status: columns[0] }]);
+                            setNewTask({
+                            title: "",
+                            type: "Task",
+                            assignedTo: "",
+                            dueDate: "",
+                            priority: "Medium",
+                            });
+                            setShowModal(false);
+                        }}
+                        >
+                        Add Item
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
         </div>
     );
 }
