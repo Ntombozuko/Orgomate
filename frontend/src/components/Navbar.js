@@ -9,7 +9,6 @@ function Navbar({ scrollToFeatures }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Retrieve the user data from localStorage
   const storedUser = localStorage.getItem("user");
   const user =
     storedUser && storedUser !== "undefined" ? JSON.parse(storedUser) : null;
@@ -18,9 +17,9 @@ function Navbar({ scrollToFeatures }) {
     setViewLinks(!viewLinks);
   };
 
-  // Click on "Features" -> Scroll or Navigate to Home first
   const handleFeaturesClick = (e) => {
     e.preventDefault();
+    setViewLinks(false);
     if (location.pathname !== "/") {
       navigate("/");
       setTimeout(scrollToFeatures, 100);
@@ -29,9 +28,9 @@ function Navbar({ scrollToFeatures }) {
     }
   };
 
-  // Click on "Orgomate" -> Always Navigate to Home and Scroll to Top
   const handleLogoClick = (e) => {
     e.preventDefault();
+    setViewLinks(false);
     if (location.pathname !== "/") {
       navigate("/");
       setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
@@ -47,35 +46,58 @@ function Navbar({ scrollToFeatures }) {
   };
 
   return (
-    <div className="navbar">
-      {!user ? (
-        <>
-          <div className="leftSide">
-            <Link to="/" className="brand" onClick={handleLogoClick}>
-              <img src={Icon} alt="Icon" className="logo" />
-              <span>Orgomate</span>
-            </Link>
+    <>
+      <div className="navbar">
+        {!user ? (
+          <>
+            <div className="leftSide">
+              <Link to="/" className="brand" onClick={handleLogoClick}>
+                <img src={Icon} alt="Icon" className="logo" />
+                <span>Orgomate</span>
+              </Link>
+            </div>
+            <div className="rightSide">
+              <a href="#features" onClick={handleFeaturesClick}>
+                Features
+              </a>
+              <Link to="/About">About</Link>
+              <Link to="/Contact">Contact</Link>
+              <Link to="/Login">Log In</Link>
+              <Link to="/SignUp">Sign Up</Link>
+              <button className="menu-button" onClick={toggleNavbar}>
+                <ReorderIcon />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="user-nav">
+            <span>Welcome, {user.first_name}</span>
+            <button onClick={handleLogout}>Logout</button>
           </div>
-          <div className="rightSide">
-            <a href="#features" onClick={handleFeaturesClick}>
-              Features
-            </a>
-            <Link to="/About">About</Link>
-            <Link to="/Contact">Contact</Link>
-            <Link to="/Login">Log In</Link>
-            <Link to="/SignUp">Sign Up</Link>
-            <button className="menu-button" onClick={toggleNavbar}>
-              <ReorderIcon />
-            </button>
-          </div>
-        </>
-      ) : (
-        <div className="user-nav">
-          <span>Welcome, {user.first_name}</span>
-          <button onClick={handleLogout}>Logout</button>
+        )}
+      </div>
+
+      {/* Mobile menu */}
+      {!user && (
+        <div className={`HiddenLinks ${viewLinks ? "show" : ""}`}>
+          <a href="#features" onClick={handleFeaturesClick}>
+            Features
+          </a>
+          <Link to="/About" onClick={() => setViewLinks(false)}>
+            About
+          </Link>
+          <Link to="/Contact" onClick={() => setViewLinks(false)}>
+            Contact
+          </Link>
+          <Link to="/Login" onClick={() => setViewLinks(false)}>
+            Log In
+          </Link>
+          <Link to="/SignUp" onClick={() => setViewLinks(false)}>
+            Sign Up
+          </Link>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

@@ -69,8 +69,8 @@
   cursor: pointer;
   color: white;
   font-size: 24px;
-  position: absolute;
-  right: 20px; /* Align to the far right */
+  position: relative;
+  z-index: 1001;
 }
 
 /* 🔹 Hidden Links (Mobile) */
@@ -105,23 +105,29 @@
 /* ✅ Mobile Responsive: Only show menu button on small screens */
 @media screen and (max-width: 768px) {
   .rightSide a {
-    display: none; /* Hide links in mobile view */
+    display: none;
   }
 
   .menu-button {
-    display: block; /* Show menu button */
+    display: block;
+    position: relative;
+    z-index: 1001;
   }
 
-  .leftSide {
-    flex-direction: row;
-    align-items: center; /* Align left items when menu is expanded */
-    width: auto;
+  .HiddenLinks {
+    display: none;
+    flex-direction: column;
+    background-color: #121416;
+    width: 100%;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    z-index: 1000;
   }
 
-  /*.leftSide img {
-    width: 30px;
-    height: 30px;
-  } */
+  .HiddenLinks.show {
+    display: flex;
+  }
 }
 
 /* 🔹 Brand Name & Logo */
