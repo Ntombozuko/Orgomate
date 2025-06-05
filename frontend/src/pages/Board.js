@@ -1,13 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
 import Dropdown from "react-bootstrap/Dropdown";
-import Modal from "react-bootstrap/Modal";
-import Form from "react-bootstrap/Form";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import TaskModal from "./TaskModal";
 import "../styles/Board.css";
 
 const TYPE_COLORS = {
@@ -19,6 +18,32 @@ const TYPE_COLORS = {
   "Change Request": "#ffc107",
 };
 
+const PRIORITY_COLORS = {
+  High: "danger",
+  Medium: "warning",
+  Low: "success",
+};
+
+const reorder = (list, startIndex, endIndex) => {
+  const result = Array.from(list);
+  const [removed] = result.splice(startIndex, 1);
+  result.splice(endIndex, 0, removed);
+  return result;
+};
+
+const move = (source, destination, droppableSource, droppableDestination) => {
+  const sourceClone = Array.from(source);
+  const destClone = Array.from(destination);
+  const [removed] = sourceClone.splice(droppableSource.index, 1);
+
+  destClone.splice(droppableDestination.index, 0, removed);
+
+  return {
+    [droppableSource.droppableId]: sourceClone,
+    [droppableDestination.droppableId]: destClone,
+  };
+};
+
 function Board() {
   const [columns, setColumns] = useState([
     "To Do",
@@ -26,10 +51,15 @@ function Board() {
     "Review",
     "Done",
   ]);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editTaskId, setEditTaskId] = useState(null);
-  const [tasks, setTasks] = useState([]);
+  const [tasksByColumn, setTasksByColumn] = useState({
+    "To Do": [],
+    "In Progress": [],
+    Review: [],
+    Done: [],
+  });
+
+  // Modal control
+  const [modalMode, setModalMode] = useState(null); // "create" or "edit" or null
   const [selectedTask, setSelectedTask] = useState(null);
   const [newTask, setNewTask] = useState({
     title: "",
@@ -38,74 +68,87 @@ function Board() {
     assignedTo: "",
     dueDate: "",
     priority: "Medium",
+    status: "To Do",
+    comments: [],
   });
+
+  // Comment input state
   const [newComment, setNewComment] = useState("");
 
-  const addColumn = () => {
-    const newColumn = prompt("Enter column name:");
-    if (newColumn) setColumns([...columns, newColumn]);
+  // Handle drag and drop of tasks
+  const onDragEnd = useCallback(
+    (result) => {
+      const { source, destination } = result;
+      if (!destination) return;
+
+      const sourceColumn = source.droppableId;
+      const destColumn = destination.droppableId;
+
+      if (sourceColumn === destColumn) {
+        const items = reorder(
+          tasksByColumn[sourceColumn],
+          source.index,
+          destination.index
+        );
+        setTasksByColumn((prev) => ({ ...prev, [sourceColumn]: items }));
+      } else {
+        const resultMove = move(
+          tasksByColumn[sourceColumn],
+          tasksByColumn[destColumn],
+          source,
+          destination
+        );
+        // Update status of moved task
+        if (resultMove[destColumn][destination.index]) {
+          resultMove[destColumn][destination.index].status = destColumn;
+        }
+        setTasksByColumn((prev) => ({ ...prev, ...resultMove }));
+      }
+    },
+    [tasksByColumn]
+  );
+
+  // Open modal for creating a new task
+  const openCreateModal = () => {
+    setNewTask({
+      title: "",
+      type: "Task",
+      description: "",
+      assignedTo: "",
+      dueDate: "",
+      priority: "Medium",
+      status: columns[0],
+      comments: [],
+    });
+    setNewComment("");
+    setModalMode("create");
   };
 
-  const editColumn = (index) => {
-    const newName = prompt("Enter new column name:", columns[index]);
-    if (newName) {
-      const updated = [...columns];
-      updated[index] = newName;
-      setColumns(updated);
-    }
-  };
-
-  const deleteColumn = (index) => {
-    if (window.confirm("Are you sure you want to delete this column?")) {
-      const colName = columns[index];
-      setTasks(tasks.filter((t) => t.status !== colName));
-      setColumns(columns.filter((_, i) => i !== index));
-    }
-  };
-
-  const onDragEnd = (result) => {
-    const { source, destination } = result;
-    if (!destination) return;
-
-    // If the task is dropped in the same position, do nothing
-    if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
-    ) {
-      return;
-    }
-
-    const updatedTasks = Array.from(tasks);
-    const [movedTask] = updatedTasks.splice(
-      tasks.findIndex(
-        (task) =>
-          task.status === source.droppableId &&
-          tasks.filter((t) => t.status === source.droppableId).indexOf(task) ===
-            source.index
-      ),
-      1
-    );
-
-    movedTask.status = destination.droppableId;
-
-    // Insert task at the new position
-    const filteredTasks = updatedTasks.filter(
-      (t) => t.status !== destination.droppableId
-    );
-    const destTasks = updatedTasks.filter(
-      (t) => t.status === destination.droppableId
-    );
-    destTasks.splice(destination.index, 0, movedTask);
-
-    setTasks([...filteredTasks, ...destTasks]);
-  };
-
+  // Open modal for editing a task
   const openEditModal = (task) => {
-    setSelectedTask(task);
-    setEditTaskId(task.id);
-    setShowEditModal(true);
+    setSelectedTask({ ...task }); // clone to avoid mutation
+    setNewComment("");
+    setModalMode("edit");
   };
 
+  // Close modal and reset modal state
+  const closeModal = () => {
+    setModalMode(null);
+    setSelectedTask(null);
+    setNewComment("");
+    setNewTask({
+      title: "",
+      type: "Task",
+      description: "",
+      assignedTo: "",
+      dueDate: "",
+      priority: "Medium",
+      status: columns[0],
+      comments: [],
+    });
+  };
+
+  // Save a new task (from create modal)
   const handleSaveTask = () => {
     if (
       !newTask.title ||
@@ -116,37 +159,66 @@ function Board() {
       alert("Please fill in all required fields.");
       return;
     }
+
     const taskToAdd = {
       ...newTask,
       id: Date.now().toString(),
-      status: columns[0],
-      comments: [],
+      createdDate: new Date().toISOString().split("T")[0],
+      comments: [...newTask.comments], // ensure copy
     };
-    setTasks([...tasks, taskToAdd]);
-    setNewTask({
-      title: "",
-      type: "Task",
-      description: "",
-      assignedTo: "",
-      dueDate: "",
-      priority: "Medium",
-    });
-    setShowCreateModal(false);
+
+    setTasksByColumn((prev) => ({
+      ...prev,
+      [newTask.status]: [...prev[newTask.status], taskToAdd],
+    }));
+
+    closeModal();
   };
 
+  // Update an existing task (from edit modal)
   const handleUpdateTask = () => {
-    setTasks((prev) =>
-      prev.map((task) => (task.id === editTaskId ? { ...selectedTask } : task))
+    if (
+      !selectedTask.title ||
+      !selectedTask.type ||
+      !selectedTask.dueDate ||
+      !selectedTask.priority
+    ) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+
+    const oldStatus = Object.keys(tasksByColumn).find((col) =>
+      tasksByColumn[col].some((task) => task.id === selectedTask.id)
     );
-    setShowEditModal(false);
-    setSelectedTask(null);
-    setEditTaskId(null);
+    const newStatus = selectedTask.status;
+
+    setTasksByColumn((prev) => {
+      const updated = { ...prev };
+
+      // Remove task from old column if status changed
+      if (oldStatus !== newStatus) {
+        updated[oldStatus] = updated[oldStatus].filter(
+          (task) => task.id !== selectedTask.id
+        );
+        updated[newStatus] = [...updated[newStatus], selectedTask];
+      } else {
+        // Update task in the same column
+        updated[newStatus] = updated[newStatus].map((task) =>
+          task.id === selectedTask.id ? selectedTask : task
+        );
+      }
+
+      return updated;
+    });
+
+    closeModal();
   };
 
+  // Add comment only in edit mode
   const handleAddComment = () => {
     if (!newComment.trim()) return;
     const timestamp = new Date().toLocaleString();
-    const comment = { text: newComment, timestamp };
+    const comment = { text: newComment.trim(), timestamp };
     setSelectedTask((prev) => ({
       ...prev,
       comments: [...(prev.comments || []), comment],
@@ -154,10 +226,17 @@ function Board() {
     setNewComment("");
   };
 
+  // Delete a task
   const handleDeleteTask = (id) => {
     if (window.confirm("Are you sure you want to delete this task?")) {
-      setTasks(tasks.filter((task) => task.id !== id));
-      setShowEditModal(false);
+      setTasksByColumn((prev) => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach((col) => {
+          updated[col] = updated[col].filter((task) => task.id !== id);
+        });
+        return updated;
+      });
+      closeModal();
     }
   };
 
@@ -166,23 +245,16 @@ function Board() {
       <Container fluid>
         <h2 className="board-title">Task Management</h2>
         <div className="topbar-container">
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search task..."
-          />
-          <button
-            className="create-btn"
-            onClick={() => setShowCreateModal(true)}
-          >
+          <input className="search-input" placeholder="Search task..." />
+          <button className="create-btn" onClick={openCreateModal}>
             Create Item
           </button>
         </div>
 
         <DragDropContext onDragEnd={onDragEnd}>
           <Row className="board-container g-1">
-            {columns.map((col, ci) => (
-              <Col key={ci} className="column">
+            {columns.map((col) => (
+              <Col key={col} className="column">
                 <Card className="column-card">
                   <Card.Body>
                     <div className="column-header">
@@ -190,58 +262,62 @@ function Board() {
                       <Dropdown className="column-options">
                         <Dropdown.Toggle variant="light">⋮</Dropdown.Toggle>
                         <Dropdown.Menu>
-                          <Dropdown.Item onClick={() => editColumn(ci)}>
-                            Edit
-                          </Dropdown.Item>
-                          <Dropdown.Item onClick={() => deleteColumn(ci)}>
-                            Delete
-                          </Dropdown.Item>
+                          {/* Add options if needed */}
                         </Dropdown.Menu>
                       </Dropdown>
                     </div>
 
                     <Droppable droppableId={col}>
-                      {(provided) => (
+                      {(provided, snapshot) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
                           className="task-drop-area"
                         >
-                          {tasks
-                            .filter((t) => t.status === col)
-                            .map((task, ti) => (
-                              <Draggable
-                                key={task.id}
-                                draggableId={task.id}
-                                index={ti}
-                              >
-                                {(prov) => (
-                                  <Card
-                                    ref={prov.innerRef}
-                                    {...prov.draggableProps}
-                                    {...prov.dragHandleProps}
-                                    className="task-card mt-2"
-                                    style={{
-                                      borderLeft: `4px solid ${
-                                        TYPE_COLORS[task.type] || "#007bff"
-                                      }`,
-                                    }}
-                                    onClick={() => openEditModal(task)}
-                                  >
-                                    <Card.Body>
-                                      <strong>{task.title}</strong>
-                                      <div className="small text-muted">
-                                        {task.priority} • {task.type}
-                                      </div>
-                                      <div className="small text-muted">
-                                        Due: {task.dueDate || "N/A"} •{" "}
-                                        {task.assignedTo || "Unassigned"}
-                                      </div>
-                                    </Card.Body>
-                                  </Card>
-                                )}
-                              </Draggable>
-                            ))}
+                          {(tasksByColumn[col] || []).map((task, ti) => (
+                            <Draggable
+                              key={task.id}
+                              draggableId={task.id}
+                              index={ti}
+                            >
+                              {(provided, snapshot) => (
+                                <Card
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className="task-card mt-2"
+                                  style={{
+                                    borderLeft: `4px solid ${
+                                      TYPE_COLORS[task.type] || "#007bff"
+                                    }`,
+                                    ...provided.draggableProps.style,
+                                    opacity: snapshot.isDragging ? 0.8 : 1,
+                                  }}
+                                  onClick={() =>
+                                    !snapshot.isDragging && openEditModal(task)
+                                  }
+                                >
+                                  <Card.Body>
+                                    <strong>{task.title}</strong>
+                                    <div
+                                      className={`badge bg-${
+                                        PRIORITY_COLORS[task.priority]
+                                      }`}
+                                    >
+                                      {task.priority} • {task.type}
+                                    </div>
+                                    <div className="small text-muted">
+                                      Created: {task.createdDate || "N/A"}
+                                    </div>
+                                    <div className="small text-muted">
+                                      Due: {task.dueDate || "N/A"} •{" "}
+                                      {task.assignedTo || "Unassigned"}
+                                    </div>
+                                  </Card.Body>
+                                </Card>
+                              )}
+                            </Draggable>
+                          ))}
                           {provided.placeholder}
                         </div>
                       )}
@@ -251,11 +327,7 @@ function Board() {
               </Col>
             ))}
             <Col className="column">
-              <Button
-                variant="primary"
-                onClick={addColumn}
-                className="add-column-btn"
-              >
+              <Button variant="primary" className="add-column-btn" disabled>
                 +
               </Button>
             </Col>
@@ -263,174 +335,24 @@ function Board() {
         </DragDropContext>
       </Container>
 
-      {/* Create Task Modal */}
-      <Modal
-        show={showCreateModal}
-        onHide={() => setShowCreateModal(false)}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Create New Task</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Task Title</Form.Label>
-              <Form.Control
-                type="text"
-                value={newTask.title}
-                onChange={(e) =>
-                  setNewTask({ ...newTask, title: e.target.value })
-                }
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Item Type</Form.Label>
-              <Form.Select
-                value={newTask.type}
-                onChange={(e) =>
-                  setNewTask({ ...newTask, type: e.target.value })
-                }
-              >
-                <option>Task</option>
-                <option>Bug</option>
-                <option>Feature</option>
-                <option>Story</option>
-                <option>Issue</option>
-                <option>Change Request</option>
-              </Form.Select>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Description</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                value={newTask.description}
-                onChange={(e) =>
-                  setNewTask({ ...newTask, description: e.target.value })
-                }
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Assigned To</Form.Label>
-              <Form.Control
-                type="text"
-                value={newTask.assignedTo}
-                onChange={(e) =>
-                  setNewTask({ ...newTask, assignedTo: e.target.value })
-                }
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Due Date</Form.Label>
-              <Form.Control
-                type="date"
-                value={newTask.dueDate}
-                onChange={(e) =>
-                  setNewTask({ ...newTask, dueDate: e.target.value })
-                }
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Priority</Form.Label>
-              <Form.Select
-                value={newTask.priority}
-                onChange={(e) =>
-                  setNewTask({ ...newTask, priority: e.target.value })
-                }
-              >
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
-              </Form.Select>
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleSaveTask}>
-            Add Item
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Edit Task Modal */}
-      <Modal
-        show={showEditModal}
-        onHide={() => setShowEditModal(false)}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Edit Task</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedTask && (
-            <>
-              <Form.Group className="mb-3">
-                <Form.Label>Status</Form.Label>
-                <Form.Select
-                  value={selectedTask.status}
-                  onChange={(e) =>
-                    setSelectedTask({ ...selectedTask, status: e.target.value })
-                  }
-                >
-                  {columns.map((col) => (
-                    <option key={col}>{col}</option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Description</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={3}
-                  value={selectedTask.description}
-                  onChange={(e) =>
-                    setSelectedTask({
-                      ...selectedTask,
-                      description: e.target.value,
-                    })
-                  }
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Add Comment</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                />
-                <Button variant="link" onClick={handleAddComment}>
-                  Add
-                </Button>
-              </Form.Group>
-              <div>
-                <strong>Comments:</strong>
-                {selectedTask.comments &&
-                  selectedTask.comments.map((c, i) => (
-                    <div key={i} className="border-bottom small p-1">
-                      {c.text} <br />{" "}
-                      <em className="text-muted">{c.timestamp}</em>
-                    </div>
-                  ))}
-              </div>
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="danger" onClick={() => handleDeleteTask(editTaskId)}>
-            Delete
-          </Button>
-          <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleUpdateTask}>
-            Save
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      {/* Task Modal shared by create & edit */}
+      {(modalMode === "create" || modalMode === "edit") && (
+        <TaskModal
+          mode={modalMode}
+          show={true}
+          onClose={closeModal}
+          onSave={modalMode === "create" ? handleSaveTask : handleUpdateTask}
+          onDelete={modalMode === "edit" ? handleDeleteTask : undefined}
+          task={modalMode === "create" ? newTask : selectedTask}
+          setTask={modalMode === "create" ? setNewTask : setSelectedTask}
+          newComment={newComment}
+          setNewComment={setNewComment}
+          onAddComment={modalMode === "edit" ? handleAddComment : undefined}
+          statusOptions={columns}
+          priorityOptions={["High", "Medium", "Low"]}
+          typeOptions={Object.keys(TYPE_COLORS)}
+        />
+      )}
     </div>
   );
 }
