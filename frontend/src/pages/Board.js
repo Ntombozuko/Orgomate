@@ -72,6 +72,50 @@ function Board() {
     comments: [],
   });
 
+  const addColumn = () => {
+    const newColumn = prompt("Enter column name:");
+    if (newColumn && !columns.includes(newColumn)) {
+      setColumns([...columns, newColumn]);
+      setTasksByColumn((prev) => ({
+        ...prev,
+        [newColumn]: [],
+      }));
+    }
+  };
+
+  const editColumn = (index) => {
+    const oldName = columns[index];
+    const newName = prompt("Enter new column name:", oldName);
+    if (newName && newName !== oldName && !columns.includes(newName)) {
+      const updatedColumns = [...columns];
+      updatedColumns[index] = newName;
+      setColumns(updatedColumns);
+
+      // Update tasksByColumn with new key
+      setTasksByColumn((prev) => {
+        const updated = { ...prev };
+        updated[newName] = updated[oldName].map((task) => ({
+          ...task,
+          status: newName,
+        }));
+        delete updated[oldName];
+        return updated;
+      });
+    }
+  };
+
+  const deleteColumn = (index) => {
+    if (window.confirm("Are you sure you want to delete this column?")) {
+      const colName = columns[index];
+      setColumns(columns.filter((_, i) => i !== index));
+      setTasksByColumn((prev) => {
+        const updated = { ...prev };
+        delete updated[colName];
+        return updated;
+      });
+    }
+  };
+
   // Comment input state
   const [newComment, setNewComment] = useState("");
 
@@ -217,12 +261,35 @@ function Board() {
   // Add comment only in edit mode
   const handleAddComment = () => {
     if (!newComment.trim()) return;
+
     const timestamp = new Date().toLocaleString();
     const comment = { text: newComment.trim(), timestamp };
-    setSelectedTask((prev) => ({
-      ...prev,
-      comments: [...(prev.comments || []), comment],
-    }));
+
+    const updatedTask =
+      modalMode === "edit"
+        ? {
+            ...selectedTask,
+            comments: [...(selectedTask.comments || []), comment],
+          }
+        : {
+            ...newTask,
+            comments: [...(newTask.comments || []), comment],
+          };
+
+    if (modalMode === "edit") {
+      setSelectedTask(updatedTask);
+
+      setTasksByColumn((prev) => {
+        const updated = { ...prev };
+        updated[updatedTask.status] = updated[updatedTask.status].map((t) =>
+          t.id === updatedTask.id ? updatedTask : t
+        );
+        return updated;
+      });
+    } else {
+      setNewTask(updatedTask);
+    }
+
     setNewComment("");
   };
 
@@ -253,7 +320,7 @@ function Board() {
 
         <DragDropContext onDragEnd={onDragEnd}>
           <Row className="board-container g-1">
-            {columns.map((col) => (
+            {columns.map((col, ci) => (
               <Col key={col} className="column">
                 <Card className="column-card">
                   <Card.Body>
@@ -262,7 +329,12 @@ function Board() {
                       <Dropdown className="column-options">
                         <Dropdown.Toggle variant="light">⋮</Dropdown.Toggle>
                         <Dropdown.Menu>
-                          {/* Add options if needed */}
+                          <Dropdown.Item onClick={() => editColumn(ci)}>
+                            Edit
+                          </Dropdown.Item>
+                          <Dropdown.Item onClick={() => deleteColumn(ci)}>
+                            Delete
+                          </Dropdown.Item>
                         </Dropdown.Menu>
                       </Dropdown>
                     </div>
@@ -297,21 +369,39 @@ function Board() {
                                     !snapshot.isDragging && openEditModal(task)
                                   }
                                 >
-                                  <Card.Body>
-                                    <strong>{task.title}</strong>
-                                    <div
-                                      className={`badge bg-${
-                                        PRIORITY_COLORS[task.priority]
-                                      }`}
-                                    >
-                                      {task.priority} • {task.type}
+                                  <Card.Body style={{ fontSize: "0.85rem" }}>
+                                    {/* Title */}
+                                    <strong className="d-block mb-1">
+                                      {task.title}
+                                    </strong>
+
+                                    {/* Priority and Created Date */}
+                                    <div className="d-flex justify-content-between align-items-center mb-1">
+                                      <span
+                                        className={`badge bg-${
+                                          PRIORITY_COLORS[task.priority]
+                                        }`}
+                                      >
+                                        {task.priority}
+                                      </span>
+                                      <small className="text-muted">
+                                        Created: {task.createdDate || "N/A"}
+                                      </small>
                                     </div>
-                                    <div className="small text-muted">
-                                      Created: {task.createdDate || "N/A"}
+
+                                    {/* Task Type */}
+                                    <div className="text-muted mb-1">
+                                      <span>{task.type}</span>
                                     </div>
-                                    <div className="small text-muted">
-                                      Due: {task.dueDate || "N/A"} •{" "}
-                                      {task.assignedTo || "Unassigned"}
+
+                                    {/* Due Date and Assigned To */}
+                                    <div className="d-flex justify-content-between text-muted">
+                                      <small>
+                                        Due: {task.dueDate || "N/A"}
+                                      </small>
+                                      <small>
+                                        👤 {task.assignedTo || "Unassigned"}
+                                      </small>
                                     </div>
                                   </Card.Body>
                                 </Card>
@@ -327,7 +417,11 @@ function Board() {
               </Col>
             ))}
             <Col className="column">
-              <Button variant="primary" className="add-column-btn" disabled>
+              <Button
+                variant="primary"
+                onClick={addColumn}
+                className="add-column-btn"
+              >
                 +
               </Button>
             </Col>
@@ -347,7 +441,7 @@ function Board() {
           setTask={modalMode === "create" ? setNewTask : setSelectedTask}
           newComment={newComment}
           setNewComment={setNewComment}
-          onAddComment={modalMode === "edit" ? handleAddComment : undefined}
+          onAddComment={handleAddComment}
           statusOptions={columns}
           priorityOptions={["High", "Medium", "Low"]}
           typeOptions={Object.keys(TYPE_COLORS)}

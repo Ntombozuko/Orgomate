@@ -80,7 +80,7 @@ const TaskModal = ({
             <Form.Label>Description</Form.Label>
             <Form.Control
               as="textarea"
-              rows={3}
+              rows={6}
               value={task.description}
               readOnly={mode === "edit"}
               onChange={(e) =>
@@ -142,44 +142,30 @@ const TaskModal = ({
           {mode === "edit" && (
             <>
               <hr />
-              <Form.Group className="mb-2">
-                <Form.Label>Comments</Form.Label>
-                <ul
-                  style={{
-                    maxHeight: "150px",
-                    overflowY: "auto",
-                    paddingLeft: "1.2rem",
-                  }}
-                >
-                  {comments.length === 0 && (
-                    <li className="text-muted">No comments yet.</li>
-                  )}
-                  {comments.map((c, i) => (
-                    <li key={i}>
-                      {c.text}{" "}
-                      <small className="text-muted">({c.timestamp})</small>
-                    </li>
-                  ))}
-                </ul>
+              <Form.Group className="mb-3">
+                <Form.Label>Add Comment</Form.Label>
                 <Form.Control
                   type="text"
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Add comment..."
                 />
-                <Button
-                  className="mt-2"
-                  variant="outline-primary"
-                  size="sm"
-                  onClick={() => {
-                    if (newComment.trim()) onAddComment();
-                  }}
-                  disabled={!newComment.trim()}
-                >
-                  Add Comment
+                <Button variant="link" onClick={onAddComment}>
+                  Add
                 </Button>
               </Form.Group>
+
+              {task.comments && task.comments.length > 0 && (
+                <div>
+                  <strong>Comments:</strong>
+                  {task.comments.map((c, i) => (
+                    <div key={i} className="border-bottom small p-1">
+                      {c.text}
+                      <br />
+                      <em className="text-muted">{c.timestamp}</em>
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </Form>
