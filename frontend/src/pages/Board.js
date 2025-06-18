@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
@@ -16,9 +16,11 @@ import {
 import {
   arrayMove,
   SortableContext,
+  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import TaskModal from "./TaskModal";
 import "../styles/Board.css";
 
@@ -46,23 +48,37 @@ function DroppableColumn({ id, children }) {
   );
 }
 
-function DraggableTask({ task, children }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: task.id,
-      data: { task },
-    });
+function DraggableTask({ task, children, onClick }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useDraggable({
+    id: task.id,
+    data: { task },
+  });
 
   const style = {
-    transform: transform
-      ? `translate(${transform.x}px, ${transform.y}px)`
-      : undefined,
-    opacity: isDragging ? 0.8 : 1,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
   };
 
   return (
-    <div ref={setNodeRef} {...listeners} {...attributes} style={style}>
-      {children}
+    <div ref={setNodeRef} style={style}>
+      <div
+        {...attributes}
+        {...listeners}
+        style={{ cursor: "grab", padding: "4px", display: "inline-block" }}
+      >
+        ... {/* Drag handle */}
+      </div>
+      <div onClick={() => onClick?.(task)} style={{ cursor: "pointer" }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -157,6 +173,7 @@ function Board() {
   };
 
   const openEditModal = (task) => {
+    console.log("Clicked task:", task);
     setSelectedTask({ ...task });
     setNewComment("");
     setModalMode("edit");
@@ -362,7 +379,11 @@ function Board() {
 
                       <DroppableColumn id={col}>
                         {(tasksByColumn[col] || []).map((task) => (
-                          <DraggableTask key={task.id} task={task}>
+                          <DraggableTask
+                            key={task.id}
+                            task={task}
+                            onClick={() => openEditModal(task)}
+                          >
                             <Card
                               className="task-card mt-2"
                               style={{
@@ -370,7 +391,6 @@ function Board() {
                                   TYPE_COLORS[task.type] || "#007bff"
                                 }`,
                               }}
-                              onClick={() => openEditModal(task)}
                             >
                               <Card.Body style={{ fontSize: "0.85rem" }}>
                                 <strong className="d-block mb-1">
@@ -432,25 +452,23 @@ function Board() {
         </DndContext>
       </Container>
 
-      {(modalMode === "create" || modalMode === "edit") &&
-        (console.log("Modal should show"),
-        (
-          <TaskModal
-            mode={modalMode}
-            show={true}
-            onClose={closeModal}
-            onSave={modalMode === "create" ? handleSaveTask : handleUpdateTask}
-            onDelete={modalMode === "edit" ? handleDeleteTask : undefined}
-            task={modalMode === "create" ? newTask : selectedTask}
-            setTask={modalMode === "create" ? setNewTask : setSelectedTask}
-            newComment={newComment}
-            setNewComment={setNewComment}
-            onAddComment={handleAddComment}
-            statusOptions={columns}
-            priorityOptions={["High", "Medium", "Low"]}
-            typeOptions={Object.keys(TYPE_COLORS)}
-          />
-        ))}
+      {(modalMode === "create" || modalMode === "edit") && (
+        <TaskModal
+          mode={modalMode}
+          show={true}
+          onClose={closeModal}
+          onSave={modalMode === "create" ? handleSaveTask : handleUpdateTask}
+          onDelete={modalMode === "edit" ? handleDeleteTask : undefined}
+          task={modalMode === "create" ? newTask : selectedTask}
+          setTask={modalMode === "create" ? setNewTask : setSelectedTask}
+          newComment={newComment}
+          setNewComment={setNewComment}
+          onAddComment={handleAddComment}
+          statusOptions={columns}
+          priorityOptions={["High", "Medium", "Low"]}
+          typeOptions={Object.keys(TYPE_COLORS)}
+        />
+      )}
     </div>
   );
 }
